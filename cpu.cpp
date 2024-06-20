@@ -1,512 +1,504 @@
-#include <bits/stdc++.h>
- 
+ #include <bits/stdc++.h>
+
 using namespace std;
-int wt[100], bt[100], at[100], tat[100], n, p[100];
-float awt[5], atat[5], idle[5];
-vector<int> start,finish;
-vector<string> state;
-// void create_file_csv(char * filename, int a[][2], int n, int m) {
-//   printf("\n Creating %s.csv file", filename);
-//   FILE * fp;
-//   int i, j;
-//   filename = strcat(filename, ".csv");
-//   fp = fopen(filename, "w+");
-//   fprintf(fp, "FCFS, SJF, RR, SRTF, Innovative Algo");
-//   for (i = 0; i < m; i++) {
-//     fprintf(fp, "\n%d", i + 1);
-//     for (j = 0; j < n; j++)
-//       fprintf(fp, ",%d ", a[i][j]);
-//   }
-//   fclose(fp);
-//   printf("\n %sfile created", filename);
-// }
 
-void input() {
-
-    int c;
-    cout<<"Enter 0 if you want to enter the processes as offline queries and enter 1 if you want to enter the processes as online queries\t";
-    cin>>c;
-
-    if(c == 0){
-        cout<<"Enter Number of processes: ";
-        cin>>n;
-        int i;
-
-        vector<pair<pair<int,int>,int> > v(n);
-
-        for (i = 0; i < n; i++) p[i] = i + 1;
-
-        for (i = 0; i < n; i++) {
-            cout<<"Enter Burst Time of process "<<i+1<<": ";
-            cin>>bt[i];
-            v[i].first.second=bt[i];
-            cout<<"Enter Arrival Time of process "<<i+1<<": ";
-            cin>>at[i];
-            v[i].first.first=at[i];
-            v[i].second=i+1;
-        }
+int waitingTime[100], burstTime[100], arrivalTime[100], turnAroundTime[100], numberOfProcesses, processIds[100];
+float averageWaitingTime[5], averageTurnAroundTime[5], idleTime[5];
+vector<int> startTime, finishTime;
+vector<string> processState;
+void printResults() {
+    cout << endl;
+    cout << "Starting Time \t";
+    for (int startTimePoint : startTime) {
+        cout << startTimePoint << "\t";
     }
+    cout << endl;
+    
+    cout << "Finishing Time \t";
+    for (int finishTimePoint : finishTime) {
+        cout << finishTimePoint << "\t";
+    }
+    cout << endl;
+    
+    cout << "State\t\t";
+    for (const string& state : processState) {
+        cout << state << "\t";
+    }
+    cout << endl << endl;
+}
+void inputProcessDetails() {
+    int inputChoice;
+    cout << "Enter 0 for offline process input, 1 for online process input: ";
+    cin >> inputChoice;
 
-    else{
-        int time = 10;
-        cout<<"Enter the time until which processes arrive\t:";
-        cin>>time;
+    if (inputChoice == 0) {
+        cout << "Enter Number of processes: ";
+        cin >> numberOfProcesses;
 
-        for(int i = 0; i <= time; i++){
-            int num;
-            cout<<"Enter the number of processes arriving at time "<<i<<":\t";
-            cin>>num;
-            n += num;
+        vector<pair<pair<int,int>,int>> processInfo(numberOfProcesses);
 
-            for(int x = 1; x <= num; x++){
-                int pid;
-                cout<<"Enter the process id for process arriving:\t";
-                cin>>pid;
-                cout<<"Enter the burst time for process id "<<pid<<":\t";
-                cin>>bt[pid-1];
-                at[pid-1] = i;
+        for (int i = 0; i < numberOfProcesses; i++) {
+            processIds[i] = i + 1;
+            
+            cout << "Enter Burst Time of process " << i+1 << ": ";
+            cin >> burstTime[i];
+            processInfo[i].first.second = burstTime[i];
+            
+            cout << "Enter Arrival Time of process " << i+1 << ": ";
+            cin >> arrivalTime[i];
+            processInfo[i].first.first = arrivalTime[i];
+            
+            processInfo[i].second = i + 1;
+        }
+    } else {
+        int simulationTime = 10;
+        cout << "Enter the simulation time for process arrivals: ";
+        cin >> simulationTime;
+
+        for (int currentTime = 0; currentTime <= simulationTime; currentTime++) {
+            int newProcessCount;
+            cout << "Enter the number of processes arriving at time " << currentTime << ": ";
+            cin >> newProcessCount;
+            numberOfProcesses += newProcessCount;
+
+            for (int j = 1; j <= newProcessCount; j++) {
+                int processId;
+                cout << "Enter the process id for arriving process: ";
+                cin >> processId;
+                cout << "Enter the burst time for process id " << processId << ": ";
+                cin >> burstTime[processId-1];
+                arrivalTime[processId-1] = currentTime;
             }
         }
     }
 
-    vector<pair<pair<int,int>,int> > v(n);
-    for(int i = 0; i < n; i++){
-        v[i].first.first = at[i];
-        v[i].first.second = bt[i];
-        v[i].second = i+1;
+    vector<pair<pair<int,int>,int>> processInfo(numberOfProcesses);
+    for (int i = 0; i < numberOfProcesses; i++) {
+        processInfo[i].first.first = arrivalTime[i];
+        processInfo[i].first.second = burstTime[i];
+        processInfo[i].second = i + 1;
     }
 
-    int i;
-    sort(v.begin(),v.end());
-    for (i = 0; i < n; i++) p[i] = v[i].second;
-    for (i = 0; i < n; i++) {
-        bt[i]=v[i].first.second;
-        at[i]=v[i].first.first;
+    sort(processInfo.begin(), processInfo.end());
+    
+    for (int i = 0; i < numberOfProcesses; i++) {
+        processIds[i] = processInfo[i].second;
+        burstTime[i] = processInfo[i].first.second;
+        arrivalTime[i] = processInfo[i].first.first;
     }
-    for (i = 0; i < 5; i++) {
-        awt[i] = 0.0;
-        atat[i] = 0.0;
+
+    for (int i = 0; i < 5; i++) {
+        averageWaitingTime[i] = 0.0;
+        averageTurnAroundTime[i] = 0.0;
     }
 }
 
-
-void fcfs() {
-    start.clear();
-    finish.clear();
-    state.clear();
-    int time = at[0] + bt[0];
-    idle[0]=at[0];
-    if(at[0]){
-        start.push_back(0);
-        finish.push_back(at[0]);
-        state.push_back("Idle");
+void firstComeFirstServe() {
+    startTime.clear();
+    finishTime.clear();
+    processState.clear();
+    
+    int currentTime = arrivalTime[0] + burstTime[0];
+    idleTime[0] = arrivalTime[0];
+    
+    if (arrivalTime[0] > 0) {
+        startTime.push_back(0);
+        finishTime.push_back(arrivalTime[0]);
+        processState.push_back("Idle");
     }
-    start.push_back(at[0]);
-    finish.push_back(time);
-    state.push_back("Id["+to_string(p[0])+"]");
-    wt[0] = 0;
-    atat[0] = tat[0] = bt[0];
-    for (int i = 1; i < n; i++) {
-        if(at[i]<=time){
-            start.push_back(time);
-            wt[i] = time - at[i];
-            time += bt[i];
-            finish.push_back(time);
-            state.push_back("Id["+to_string(p[i])+"]");
-            awt[0] += wt[i];
-            tat[i] = wt[i] + bt[i];
-            atat[0] += tat[i];
-        }
-        else{
-            start.push_back(time);
-            finish.push_back(at[i]);
-            state.push_back("Idle");
-            start.push_back(at[i]);
-            idle[0] += at[i] - time;
-            time = bt[i] + at[i];
-            finish.push_back(time);
-            state.push_back("Id["+to_string(p[i])+"]");
-            wt[i] = 0;
-            awt[0] += wt[i];
-            tat[i] = wt[i] + bt[i];
-            atat[0] += tat[i];
+    
+    startTime.push_back(arrivalTime[0]);
+    finishTime.push_back(currentTime);
+    processState.push_back("Id[" + to_string(processIds[0]) + "]");
+    
+    waitingTime[0] = 0;
+    averageTurnAroundTime[0] = turnAroundTime[0] = burstTime[0];
+    
+    for (int i = 1; i < numberOfProcesses; i++) {
+        if (arrivalTime[i] <= currentTime) {
+            startTime.push_back(currentTime);
+            waitingTime[i] = currentTime - arrivalTime[i];
+            currentTime += burstTime[i];
+            finishTime.push_back(currentTime);
+            processState.push_back("Id[" + to_string(processIds[i]) + "]");
+            averageWaitingTime[0] += waitingTime[i];
+            turnAroundTime[i] = waitingTime[i] + burstTime[i];
+            averageTurnAroundTime[0] += turnAroundTime[i];
+        } else {
+            startTime.push_back(currentTime);
+            finishTime.push_back(arrivalTime[i]);
+            processState.push_back("Idle");
+            startTime.push_back(arrivalTime[i]);
+            idleTime[0] += arrivalTime[i] - currentTime;
+            currentTime = burstTime[i] + arrivalTime[i];
+            finishTime.push_back(currentTime);
+            processState.push_back("Id[" + to_string(processIds[i]) + "]");
+            waitingTime[i] = 0;
+            averageWaitingTime[0] += waitingTime[i];
+            turnAroundTime[i] = waitingTime[i] + burstTime[i];
+            averageTurnAroundTime[0] += turnAroundTime[i];
         }
     }
-  atat[0] /= n;
-  awt[0] /= n;
-  printf("SR.\tA.T.\tC.T.\tB.T.\tW.T.\tT.A.T.\n");
-  for (int i = 0; i < n; i++) {
-    printf("%3d\t%3d\t%3d\t%3d\t%3d\t%4d\n", p[i], at[i],at[i]+tat[i], bt[i], wt[i], tat[i]);
-  }
-  cout<<endl;
-  cout<<"Starting Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<start[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"Finishing Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<finish[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"State\t\t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<state[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<endl;
+    
+    averageTurnAroundTime[0] /= numberOfProcesses;
+    averageWaitingTime[0] /= numberOfProcesses;
+    
+    printResults();
 }
 
-int median(int bt[]){
-    vector<int>v;
-    for(int i=0;i<n;i++) if(bt[i]) v.push_back(bt[i]);
-    sort(v.begin(),v.end());
-    if(v.size()%2) return v[v.size()/2];
-    return (v[v.size()/2]+v[v.size()/2-1])/2;
+int findMedianBurstTime() {
+    vector<int> sortedBurstTimes;
+    for (int i = 0; i < numberOfProcesses; i++) {
+        if (burstTime[i] > 0) {
+            sortedBurstTimes.push_back(burstTime[i]);
+        }
+    }
+    sort(sortedBurstTimes.begin(), sortedBurstTimes.end());
+    int size = sortedBurstTimes.size();
+    if (size % 2 == 1) {
+        return sortedBurstTimes[size / 2];
+    }
+    return (sortedBurstTimes[size / 2] + sortedBurstTimes[size / 2 - 1]) / 2;
 }
 
-void innovative() {
-    start.clear();
-    finish.clear();
-    state.clear();
-    int count = 0, time=0, smallest = 0,wait_time=0,turnaround_time=0;
-    vector<int> x(n);
-    double avg = 0, tt = 0, end;
-    for (int i = 0; i < n; i++) {
-      x[i] = bt[i];
+void innovativeAlgorithm() {
+    startTime.clear();
+    finishTime.clear();
+    processState.clear();
+    int completedProcesses = 0, currentTime = 0, shortestJob = 0;
+    int totalWaitingTime = 0, totalTurnAroundTime = 0;
+    vector<int> remainingBurstTime(numberOfProcesses);
+    
+    for (int i = 0; i < numberOfProcesses; i++) {
+        remainingBurstTime[i] = burstTime[i];
     }
-    printf("\nProcess ID\t\tArrivalTime\tBurst Time\t Turnaround Time\t Waiting Time\n");
-    for (time = 0; count != n;){
-        int mnn = 1e9,counter=0;
-        int y = 0 , mn = 1e9;
-        for (int i = 0; i < n; i++) {
-            if (at[i] <= time && bt[i] > 0) y = 1;
-        }
-        if(y == 0){
-            for (int i = 0; i < n; i++) {
-                if(bt[i] > 0)
-                mn = min(mn , at[i]);
+    
+    printf("\nProcess ID\tArrival Time\tBurst Time\tTurnaround Time\tWaiting Time\n");
+    
+    while (completedProcesses != numberOfProcesses) {
+        int shortestRemainingTime = INT_MAX;
+        bool foundProcess = false;
+        
+        for (int i = 0; i < numberOfProcesses; i++) {
+            if (arrivalTime[i] <= currentTime && remainingBurstTime[i] > 0) {
+                foundProcess = true;
             }
-            start.push_back(time);
-            state.push_back("Idle");
-            idle[4] += mn - time;
-            time = mn;
-            finish.push_back(time);
         }
-        for (int i = 0; i < n; i++) {
-            if (at[i] <= time && bt[i] < mnn && bt[i] > 0) {mnn=bt[i];smallest = i;}
+        
+        if (!foundProcess) {
+            int earliestArrival = INT_MAX;
+            for (int i = 0; i < numberOfProcesses; i++) {
+                if (remainingBurstTime[i] > 0) {
+                    earliestArrival = min(earliestArrival, arrivalTime[i]);
+                }
+            }
+            startTime.push_back(currentTime);
+            processState.push_back("Idle");
+            idleTime[4] += earliestArrival - currentTime;
+            currentTime = earliestArrival;
+            finishTime.push_back(currentTime);
         }
-        int time_quantum = median(bt);
-        if (bt[smallest] <= time_quantum && bt[smallest] > 0) {
-          start.push_back(time);
-          time += bt[smallest];
-          finish.push_back(time);
-          state.push_back("Id["+to_string(p[smallest])+"]");
-          bt[smallest] = 0;
-          counter = 1;
+        
+        for (int i = 0; i < numberOfProcesses; i++) {
+            if (arrivalTime[i] <= currentTime && remainingBurstTime[i] < shortestRemainingTime && remainingBurstTime[i] > 0) {
+                shortestRemainingTime = remainingBurstTime[i];
+                shortestJob = i;
+            }
+        }
+        
+        int timeQuantum = findMedianBurstTime();
+        
+        if (remainingBurstTime[shortestJob] <= timeQuantum && remainingBurstTime[shortestJob] > 0) {
+            startTime.push_back(currentTime);
+            currentTime += remainingBurstTime[shortestJob];
+            finishTime.push_back(currentTime);
+            processState.push_back("Id[" + to_string(processIds[shortestJob]) + "]");
+            remainingBurstTime[shortestJob] = 0;
+            completedProcesses++;
+            
+            int turnaroundTime = currentTime - arrivalTime[shortestJob];
+            int waitingTime = turnaroundTime - burstTime[shortestJob];
+            
+            printf("Process[%d]\t\t%d\t\t%d\t\t%d\t\t%d\n", 
+                   processIds[shortestJob], arrivalTime[shortestJob], burstTime[shortestJob], 
+                   turnaroundTime, waitingTime);
+            
+            totalWaitingTime += waitingTime;
+            totalTurnAroundTime += turnaroundTime;
         } 
-        else if (bt[smallest] > 0) {
-          start.push_back(time);
-          bt[smallest] -= time_quantum;
-          time += time_quantum;
-          finish.push_back(time);
-          state.push_back("Id["+to_string(p[smallest])+"]");
+        else if (remainingBurstTime[shortestJob] > 0) {
+            startTime.push_back(currentTime);
+            remainingBurstTime[shortestJob] -= timeQuantum;
+            currentTime += timeQuantum;
+            finishTime.push_back(currentTime);
+            processState.push_back("Id[" + to_string(processIds[shortestJob]) + "]");
         }
-    if (bt[smallest] == 0 && counter == 1) {
-      count++;
-      cout<<"Process["<<p[smallest]<<"]\t\t\t"<<at[smallest]<<"\t\t"<<x[smallest]<<"\t\t"<<time - at[smallest]<<"\t\t"<<time - at[smallest] - x[smallest]<<endl;
-      wait_time = wait_time + time - at[smallest] - x[smallest];
-      turnaround_time = turnaround_time + time - at[smallest];
-      counter = 0;
     }
+    
+    averageWaitingTime[4] = totalWaitingTime * 1.0 / numberOfProcesses;
+    averageTurnAroundTime[4] = totalTurnAroundTime * 1.0 / numberOfProcesses;
+    
+    for (int i = 0; i < numberOfProcesses; i++) {
+        burstTime[i] = remainingBurstTime[i];
     }
-  awt[4] = wait_time * 1.0 / n;
-  atat[4] = turnaround_time * 1.0 / n;   
-    for (int i = 0; i < n; i++) {
-      bt[i] = x[i];
-    }
-  cout<<endl;
-  cout<<"Starting Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<start[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"Finishing Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<finish[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"State\t\t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<state[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<endl;
+    
+    printResults();
 }
 
-void rr() {
-    start.clear();
-    finish.clear();
-    state.clear();
-    int total = 0, x, counter = 0, time_quantum=0;
-    int wait_time = 0, turnaround_time = 0, temp[100];
-    x = n;
-    for (int i = 0; i < n; i++) {
-        temp[i] = bt[i];
-    } 
-  printf("\nEnter Time Quantum:\t");
-  scanf("%d", & time_quantum);
-  int i=0;
-  printf("\nProcess ID\t\tArrivalTime\tCompletion Time\tBurst Time\t Turnaround Time\t Waiting Time\n");
-  for (total = 0, i = 0; x != 0;) {
-    if(at[i]<=total){
-        if (temp[i] <= time_quantum && temp[i] > 0) {
-        start.push_back(total);
-        total = total + temp[i];
-        finish.push_back(total);
-        state.push_back("Id["+to_string(p[i])+"]");
-          temp[i] = 0;
-          counter = 1;
-        } 
-        else if (temp[i] > 0) {
-            start.push_back(total);
-            temp[i] = temp[i] - time_quantum;
-            total = total + time_quantum;
-            finish.push_back(total);
-            state.push_back("Id["+to_string(p[i])+"]");
-        }
+void roundRobin() {
+    startTime.clear();
+    finishTime.clear();
+    processState.clear();
+    int totalTime = 0, completedProcesses = 0, timeQuantum = 0;
+    int totalWaitingTime = 0, totalTurnAroundTime = 0;
+    vector<int> remainingBurstTime(numberOfProcesses);
+    
+    for (int i = 0; i < numberOfProcesses; i++) {
+        remainingBurstTime[i] = burstTime[i];
     }
-    else{
-        start.push_back(total);
-        finish.push_back(at[i]);
-        state.push_back("Idle");
-        if (temp[i] <= time_quantum && temp[i] > 0) {
-          idle[2] += at[i] - total;
-        start.push_back(at[i]);
-          total = temp[i]+at[i];
-        finish.push_back(total);
-        state.push_back("Id["+to_string(p[i])+"]");
-          temp[i] = 0;
-          counter = 1;
-        } 
-        else if (temp[i] > 0) {
-          idle[2] += at[i] - total;
-        start.push_back(at[i]);
-          total = temp[i]+at[i];
-        finish.push_back(total);
-        state.push_back("Id["+to_string(p[i])+"]");
-          temp[i] = temp[i] - time_quantum;
-          total = at[i] + time_quantum;
-        }
-    }
-
-    if (temp[i] == 0 && counter == 1) {
-      x--;
-      cout<<"Process["<<p[i]<<"]\t\t\t"<<at[i]<<"\t\t"<<at[i]+ total - at[i]<<"\t\t"<<bt[i]<<"\t\t"<<total - at[i]<<"\t\t"<<total - at[i] - bt[i]<<endl;
-      wait_time = wait_time + total - at[i] - bt[i];
-      turnaround_time = turnaround_time + total - at[i];
-      counter = 0;
-    }
-    if (i == n - 1) i = 0;
-    else i++;
-  }
-  awt[2] = wait_time * 1.0 / n;
-  atat[2] = turnaround_time * 1.0 / n;
-  cout<<endl;
-  cout<<"Starting Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<start[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"Finishing Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<finish[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"State\t\t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<state[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<endl;
-}
-
-void srtf() {
-    start.clear();
-    finish.clear();
-    state.clear();
-    int i, count = 0, time=0, smallest=0;
-    vector<int> x(n);
-    double avg = 0, tt = 0, end;
-    for (i = 0; i < n; i++) {
-      x[i] = bt[i];
-    }
-    printf("\nProcess ID\t\tArrivalTime\tCompletion Time\tBurst Time\t Turnaround Time\t Waiting Time\n");
-    for (time = 0; count != n; time++){
-        int mnn = 1e9;
-        int y = 0 , mn = 1e9;
-        for (i = 0; i < n; i++) {
-            if (at[i] <= time && bt[i] > 0) y = 1;
-        }
-        if(y == 0){
-            for (i = 0; i < n; i++) {
-                if(bt[i] > 0)
-                mn = min(mn , at[i]);
+    
+    printf("\nEnter Time Quantum:\t");
+    scanf("%d", &timeQuantum);
+    
+    printf("\nProcess ID\tArrival Time\tCompletion Time\tBurst Time\tTurnaround Time\tWaiting Time\n");
+    
+    for (int currentTime = 0, i = 0; completedProcesses != numberOfProcesses;) {
+        if (arrivalTime[i] <= currentTime) {
+            if (remainingBurstTime[i] <= timeQuantum && remainingBurstTime[i] > 0) {
+                startTime.push_back(currentTime);
+                currentTime += remainingBurstTime[i];
+                finishTime.push_back(currentTime);
+                processState.push_back("Id[" + to_string(processIds[i]) + "]");
+                remainingBurstTime[i] = 0;
+                completedProcesses++;
+                
+                int turnaroundTime = currentTime - arrivalTime[i];
+                int waitingTime = turnaroundTime - burstTime[i];
+                
+                printf("Process[%d]\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", 
+                       processIds[i], arrivalTime[i], currentTime, burstTime[i], 
+                       turnaroundTime, waitingTime);
+                
+                totalWaitingTime += waitingTime;
+                totalTurnAroundTime += turnaroundTime;
+            } 
+            else if (remainingBurstTime[i] > 0) {
+                startTime.push_back(currentTime);
+                remainingBurstTime[i] -= timeQuantum;
+                currentTime += timeQuantum;
+                finishTime.push_back(currentTime);
+                processState.push_back("Id[" + to_string(processIds[i]) + "]");
             }
-            start.push_back(time);
-            state.push_back("Idle");
-            idle[3] += mn - time;
-            time = mn;
-            finish.push_back(time);
         }
-        for (i = 0; i < n; i++) {
-            if (at[i] <= time && bt[i] < mnn && bt[i] > 0) {mnn=bt[i];smallest = i;}
+        else {
+            startTime.push_back(currentTime);
+            finishTime.push_back(arrivalTime[i]);
+            processState.push_back("Idle");
+            idleTime[2] += arrivalTime[i] - currentTime;
+            currentTime = arrivalTime[i];
         }
-        bt[smallest]--;
-        start.push_back(time);
-        finish.push_back(time+1);
-        state.push_back("Id["+to_string(p[smallest])+"]");
-        if (bt[smallest] == 0) {
-            count++;
-            end = time + 1;
-            cout<<"Process["<<p[smallest]<<"]\t\t\t"<<at[smallest]<<"\t\t"<<at[smallest] + end - at[smallest]<<"\t\t"<<x[smallest]<<"\t\t"<<end - at[smallest]<<"\t\t"<<end - at[smallest] - x[smallest]<<endl;
-            avg = avg + end - at[smallest] - x[smallest];
-            tt = tt + end - at[smallest];
+        
+        if (i == numberOfProcesses - 1) {
+            i = 0;
+        } else {
+            i++;
         }
     }
-    awt[3] = avg / n;
-    atat[3] = tt / n;
-    for (i = 0; i < n; i++) {
-      bt[i]=x[i];
-    }
-  cout<<endl;
-  cout<<"Starting Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<start[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"Finishing Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<finish[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"State\t\t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<state[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<endl;
+    
+    averageWaitingTime[2] = totalWaitingTime * 1.0 / numberOfProcesses;
+    averageTurnAroundTime[2] = totalTurnAroundTime * 1.0 / numberOfProcesses;
+    
+    printResults();
 }
 
-void display(int c) {
-  printf("Average Waiting Time: %f\nAverage Turn Around Time: %f\nCPU Idleness Time: %f", awt[c - 1], atat[c - 1], idle[c-1]);
-}
-
-void sjf() {
-    start.clear();
-    finish.clear();
-    state.clear();
-    int i, count = 0, time=0, smallest=0;
-    vector<int> x(n);
-    double avg = 0, tt = 0, end;
-    for (i = 0; i < n; i++) {
-      x[i] = bt[i];
+void shortestRemainingTimeFirst() {
+    startTime.clear();
+    finishTime.clear();
+    processState.clear();
+    int completedProcesses = 0, currentTime = 0, shortestJob = 0;
+    vector<int> remainingBurstTime(numberOfProcesses);
+    double totalWaitingTime = 0, totalTurnAroundTime = 0;
+    
+    for (int i = 0; i < numberOfProcesses; i++) {
+        remainingBurstTime[i] = burstTime[i];
     }
-    printf("\nProcess ID\t\tArrivalTime\tCompletion time\tBurst Time\t Turnaround Time\t Waiting Time\n");
-    for (time = 0; count != n;){
-        int mnn = 1e9;
-        int y = 0 , mn = 1e9;
-        for (i = 0; i < n; i++) {
-            if (at[i] <= time && bt[i] > 0) y = 1;
-        }
-        if(y == 0){
-            for (i = 0; i < n; i++) {
-                if(bt[i] > 0)
-                mn = min(mn , at[i]);
+    
+    printf("\nProcess ID\tArrival Time\tCompletion Time\tBurst Time\tTurnaround Time\tWaiting Time\n");
+    
+    while (completedProcesses != numberOfProcesses) {
+        int shortestRemainingTime = INT_MAX;
+        bool foundProcess = false;
+        
+        for (int i = 0; i < numberOfProcesses; i++) {
+            if (arrivalTime[i] <= currentTime && remainingBurstTime[i] > 0) {
+                foundProcess = true;
             }
-            start.push_back(time);
-            state.push_back("Idle");
-            idle[1] += mn - time;
-            time = mn;
-            finish.push_back(time);
         }
-        for (i = 0; i < n; i++) {
-            if (at[i] <= time && bt[i] < mnn && bt[i] > 0) {mnn=bt[i];smallest = i;}
+        
+        if (!foundProcess) {
+            int earliestArrival = INT_MAX;
+            for (int i = 0; i < numberOfProcesses; i++) {
+                if (remainingBurstTime[i] > 0) {
+                    earliestArrival = min(earliestArrival, arrivalTime[i]);
+                }
+            }
+            startTime.push_back(currentTime);
+            processState.push_back("Idle");
+            idleTime[3] += earliestArrival - currentTime;
+            currentTime = earliestArrival;
+            finishTime.push_back(currentTime);
         }
-        bt[smallest]=0;
-        if (bt[smallest] == 0) {
-            count++;
-            start.push_back(time);
-            state.push_back("Id["+to_string(p[smallest])+"]");
-            end = time + x[smallest];
-            time=end;
-            finish.push_back(time);
-            cout<<"Process["<<p[smallest]<<"]\t\t\t"<<at[smallest]<<"\t\t"<<at[smallest]+end - at[smallest]<<"\t\t"<<x[smallest]<<"\t\t"<<end - at[smallest]<<"\t\t"<<end - at[smallest] - x[smallest]<<endl;
-            avg = avg + end - at[smallest] - x[smallest];
-            tt = tt + end - at[smallest];
+        
+        for (int i = 0; i < numberOfProcesses; i++) {
+            if (arrivalTime[i] <= currentTime && remainingBurstTime[i] < shortestRemainingTime && remainingBurstTime[i] > 0) {
+                shortestRemainingTime = remainingBurstTime[i];
+                shortestJob = i;
+            }
         }
+        
+        remainingBurstTime[shortestJob]--;
+        startTime.push_back(currentTime);
+        
+    finishTime.push_back(currentTime + 1);
+    processState.push_back("Id[" + to_string(processIds[shortestJob]) + "]");
+    
+    if (remainingBurstTime[shortestJob] == 0) {
+        completedProcesses++;
+        int completionTime = currentTime + 1;
+        int turnaroundTime = completionTime - arrivalTime[shortestJob];
+        int waitingTime = turnaroundTime - burstTime[shortestJob];
+        
+        printf("Process[%d]\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", 
+               processIds[shortestJob], arrivalTime[shortestJob], completionTime, 
+               burstTime[shortestJob], turnaroundTime, waitingTime);
+        
+        totalWaitingTime += waitingTime;
+        totalTurnAroundTime += turnaroundTime;
     }
-    awt[1] = avg / n;
-    atat[1] = tt / n;
-    for (i = 0; i < n; i++) {
-        bt[i] = x[i];
+    
+    currentTime++;
+}
+
+averageWaitingTime[3] = totalWaitingTime / numberOfProcesses;
+averageTurnAroundTime[3] = totalTurnAroundTime / numberOfProcesses;
+
+for (int i = 0; i < numberOfProcesses; i++) {
+    burstTime[i] = remainingBurstTime[i];
+}
+
+printResults();
+}
+
+void shortestJobFirst() {
+    startTime.clear();
+    finishTime.clear();
+    processState.clear();
+    int completedProcesses = 0, currentTime = 0, shortestJob = 0;
+    vector<int> remainingBurstTime(numberOfProcesses);
+    double totalWaitingTime = 0, totalTurnAroundTime = 0;
+    
+    for (int i = 0; i < numberOfProcesses; i++) {
+        remainingBurstTime[i] = burstTime[i];
     }
-  cout<<endl;
-  cout<<"Starting Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<start[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"Finishing Time \t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<finish[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<"State\t\t";
-  for (int i = 0; i < start.size(); i++) {
-    cout<<state[i]<<"\t";
-  }
-  cout<<endl;
-  cout<<endl;
+    
+    printf("\nProcess ID\tArrival Time\tCompletion Time\tBurst Time\tTurnaround Time\tWaiting Time\n");
+    
+    while (completedProcesses != numberOfProcesses) {
+        int shortestBurstTime = INT_MAX;
+        bool foundProcess = false;
+        
+        for (int i = 0; i < numberOfProcesses; i++) {
+            if (arrivalTime[i] <= currentTime && remainingBurstTime[i] > 0) {
+                foundProcess = true;
+            }
+        }
+        
+        if (!foundProcess) {
+            int earliestArrival = INT_MAX;
+            for (int i = 0; i < numberOfProcesses; i++) {
+                if (remainingBurstTime[i] > 0) {
+                    earliestArrival = min(earliestArrival, arrivalTime[i]);
+                }
+            }
+            startTime.push_back(currentTime);
+            processState.push_back("Idle");
+            idleTime[1] += earliestArrival - currentTime;
+            currentTime = earliestArrival;
+            finishTime.push_back(currentTime);
+        }
+        
+        for (int i = 0; i < numberOfProcesses; i++) {
+            if (arrivalTime[i] <= currentTime && remainingBurstTime[i] < shortestBurstTime && remainingBurstTime[i] > 0) {
+                shortestBurstTime = remainingBurstTime[i];
+                shortestJob = i;
+            }
+        }
+        
+        startTime.push_back(currentTime);
+        currentTime += remainingBurstTime[shortestJob];
+        finishTime.push_back(currentTime);
+        processState.push_back("Id[" + to_string(processIds[shortestJob]) + "]");
+        
+        int turnaroundTime = currentTime - arrivalTime[shortestJob];
+        int waitingTime = turnaroundTime - burstTime[shortestJob];
+        
+        printf("Process[%d]\t\t%d\t\t%d\t\t%d\t\t%d\t\t%d\n", 
+               processIds[shortestJob], arrivalTime[shortestJob], currentTime, 
+               burstTime[shortestJob], turnaroundTime, waitingTime);
+        
+        totalWaitingTime += waitingTime;
+        totalTurnAroundTime += turnaroundTime;
+        
+        remainingBurstTime[shortestJob] = 0;
+        completedProcesses++;
+    }
+    
+    averageWaitingTime[1] = totalWaitingTime / numberOfProcesses;
+    averageTurnAroundTime[1] = totalTurnAroundTime / numberOfProcesses;
+    
+    printResults();
+}
+
+
+
+void displayResults(int algorithmChoice) {
+    printf("Average Waiting Time: %.2f\n", averageWaitingTime[algorithmChoice - 1]);
+    printf("Average Turn Around Time: %.2f\n", averageTurnAroundTime[algorithmChoice - 1]);
+    printf("CPU Idleness Time: %.2f\n", idleTime[algorithmChoice - 1]);
 }
 
 int main() {
-  printf("Welcome to CPU Scheduling:\n\n");
-  input();
-  int c, choice;
-  printf("Choice\tAlgorithm used\n1\tFCFS Algorithm\n2\tSJF Algorithm\n3\tRound robin\n4\tSRTF Algorithm\n5\tOur innovative algorithm\n");
-  do {
-    printf("Enter your choice from the above table :");
-    scanf("%d", & c);
-    switch (c) {
-    case 1:
-      fcfs();
-      break;  
-    case 2:
-      sjf();
-      break;
-    case 3:
-      rr();
-      break;
-    case 4:
-      srtf();
-      break;
-    case 5:
-      innovative();
-      break;
-    default:
-      printf("Please enter choice from 1 to 5 only\n");
-      break;
-    }
-    display(c);
-    printf("\n\nEnter 1 to continue 0 to stop");
-    scanf("%d", & choice);
-  } while (choice == 1);
-//   getch();
-  int a[5][2], i;
-  for (i = 0; i < 5; i++) {
-    a[i][0] = awt[i];
-    a[i][1] = atat[i];
-  }
-//   create_file_csv("schedule", a, 5, 2);
+    printf("Welcome to CPU Scheduling:\n\n");
+    inputProcessDetails();
+    int choice, continueChoice;
+    printf("Choice\tAlgorithm\n1\tFirst Come First Serve\n2\tShortest Job First\n3\tRound Robin\n4\tShortest Remaining Time First\n5\tInnovative Algorithm\n");
+    do {
+        printf("Enter your choice from the above table: ");
+        scanf("%d", &choice);
+        switch (choice) {
+            case 1:
+                firstComeFirstServe();
+                break;  
+            case 2:
+                shortestJobFirst();
+                break;
+            case 3:
+                roundRobin();
+                break;
+            case 4:
+                shortestRemainingTimeFirst();
+                break;
+            case 5:
+                innovativeAlgorithm();
+                break;
+            default:
+                printf("Please enter a choice from 1 to 5 only\n");
+                break;
+        }
+        displayResults(choice);
+        printf("\n\nEnter 1 to continue, 0 to stop: ");
+        scanf("%d", &continueChoice);
+    } while (continueChoice == 1);
+
+    return 0;
 }
